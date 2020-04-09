@@ -285,6 +285,12 @@ def train():
 
 
 def load_model():
+    # device = torch.device("cuda")
+    # model = TheModelClass(*args, **kwargs)
+    # model.load_state_dict(torch.load(PATH, map_location="cuda:0"))  # Choose whatever GPU device number you want
+    #
+    #
+    # model.to(device)# Make sure to call input = input.to(device) on any input tensors that you feed to the model
     training_data1 = []
     with open('data_short_tag.json', 'r') as fp:
         data = json.load(fp)
