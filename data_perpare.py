@@ -2,15 +2,16 @@ import json
 import os
 import random
 import re
-from learn_use_temp import abstract_keyword
+from clean_and_tag import abstract_keyword
 
 
+# 该函数用来从原始kp20k数据集中
 def data_read_and_clean():
     examples = []
     trg_count = 0
     valid_trg_count = 0
     data = []
-    for line_id, line in enumerate(open('data_short.json', 'r')):
+    for line_id, line in enumerate(open('Data/kp20k_train20k_test.json', 'r')):
         paper = {}
         print("Processing %d" % line_id)
         print(line)
@@ -20,56 +21,58 @@ def data_read_and_clean():
             id = json_dict['id']
         else:
             id = str(line_id)
-        paper['id'] = id
+        paper['id'] = str(line_id)
         paper['title'] = json_dict['title']
         paper['abstract'] = json_dict['abstract']
         keywords = json_dict['keywords']
-
+        # print(keywords)
         # process strings
         # keywords may be a string concatenated by ';', make sure the output is a list of strings
-        if isinstance(keywords, str):
-            keywords = keywords.split(';')
-            paper['keywords'] = keywords
-
+        # if isinstance(keywords, str):
+        #     keywords = keywords.split(';')
+        #     paper['keywords'] = keywords
+        # 在train中是直接为list不用手动切割
+        paper['keywords'] = keywords
         # remove all the abbreviations/acronyms in parentheses in keyphrases
         # keywords = [re.sub(r'\(.*?\)|\[.*?\]|\{.*?\}', '', kw) for kw in keywords]
         # print(keywords)
         data.append(paper)
-    with open('data_short1.json', 'w') as fp:
+    with open('Data/kp20k_train20k.json', 'w') as fp:
         json.dump(data, fp=fp)
 
 
+# data_short1.json / kp20k_valid500.json / Data/kp20k_valid2k.json /kp20k_train20k.json
 def read_test():
-    with open('data_short1.json', 'r') as fp:
+    with open('Data/kp20k_train20k.json', 'r') as fp:
         data = json.load(fp)
     return data
 
 
 def word2tag(data):
     data_tags = []
+    index = 0
     for paper in data:
+        print(paper)
         paper_tag = {}
         keywords = paper['keywords']
         abstract = paper['abstract']
-        print(keywords)
-        print(abstract)
-        print("*" * 50)
+
+        print("processing %s/20000" % index)
 
         abstract_clean, BIOtag = abstract_keyword(abstract, keywords)
+        paper_tag['id'] = index
         paper_tag['abstract'] = abstract_clean
         paper_tag['tags'] = BIOtag
         data_tags.append(paper_tag)
-        # for iter in abstract_list:
-        #     if iter in keywords_list:
-        #         BIOtags.append("B")
-        #     else if iter ==
-
-        # data_read_and_clean()
-    with open('data_short_tag.json', 'w') as fp:
+        index += 1
+    with open('Data/kp20k_train20k_taged.json', 'w') as fp:
         json.dump(data_tags, fp=fp)
 
 
+# 1. 先调用清理函数得到规范化的json格式
+# data_read_and_clean()
+# 2. 把上一步写入的文件读入，存在data
 data = read_test()
-
 print(len(data))
+# 3. 把标准化的json中的keywords和abstract 分词，词性还原，匹配打上tag后返回写入文件，到这里就完成bilstm-crf的输入
 word2tag(data)

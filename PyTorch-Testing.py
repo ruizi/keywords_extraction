@@ -68,7 +68,7 @@ class BiLSTM_CRF(nn.Module):
         self.transitions.data[tag_to_ix[START_TAG], :] = -10000  # 从任何标签转移到START_TAG不可能
         self.transitions.data[:, tag_to_ix[STOP_TAG]] = -10000  # 从STOP_TAG转移到任何标签不可能
 
-        #
+        # 初始化了 h0 c0
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
@@ -226,7 +226,7 @@ def train():
     #
     # 数据读入块
     training_data1 = []
-    with open('data_short_tag.json', 'r') as fp:
+    with open('Data/ori_test_used/data_short_tag.json', 'r') as fp:
         data = json.load(fp)
         print(data)
         for paper in data:
@@ -254,7 +254,9 @@ def train():
 
     # Make sure prepare_sequence from earlier in the LSTM section is loaded
     for epoch in range(30):  # 循环次数可以自己设定
+        index = 0
         for sentence, tags in training_data1:
+            index += 1
             # Step 1. Remember that Pytorch accumulates gradients.
             # We need to clear them out before each instance(
             model.zero_grad()
@@ -292,7 +294,7 @@ def load_model():
     #
     # model.to(device)# Make sure to call input = input.to(device) on any input tensors that you feed to the model
     training_data1 = []
-    with open('data_short_tag.json', 'r') as fp:
+    with open('Data/ori_test_used/data_short_tag.json', 'r') as fp:
         data = json.load(fp)
         print(data)
         for paper in data:
