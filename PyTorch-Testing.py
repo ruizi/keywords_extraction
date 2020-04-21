@@ -54,7 +54,7 @@ class BiLSTM_CRF(nn.Module):
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)
         # 输出为一个mini-batch*words_num*embedding_dim的矩阵
-        # vocab_size表示一共有多少词，embedding_dim表示想为每个词创建一个多少维的向量来表示
+        # vocab_size表示一共有多少词，embedding_dim表示想为每个词创建一个多少维的向量来表示，把每个词向量化表示，随机初始化
         self.word_embeds = nn.Embedding(vocab_size, embedding_dim)
         # 初始化创建LSTM(每个词的特征数量，隐藏层的特征数量，循环层的数量指堆叠的层数，是否是BiLSTM)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
@@ -76,10 +76,12 @@ class BiLSTM_CRF(nn.Module):
         # 实际上初始化的h0和c0
         return (torch.randn(2, 1, self.hidden_dim // 2), torch.randn(2, 1, self.hidden_dim // 2))
 
+
     def _forward_alg(self, feats):
         # 预测序列的得分，就是Loss的右边第一项
         # feats表示发射矩阵(emit score)，实际上就是LSTM的输出，意思是经过LSTM的sentence的每个word对应于每个label的得分
         init_alphas = torch.full((1, self.tagset_size), -10000.)  # 用-10000.来填充一个形状为[1,tagset_size]的tensor
+        # init_alphas (-10000,-10000,-10000,-10000,-10000)
         # START_TAG has all of the score.
         # 因为start tag是4，所以tensor([[-10000., -10000., -10000., 0., -10000.]])， B,I,O,Start,Stop
         # 将start的值为零，表示开始进行网络的传播，
@@ -88,32 +90,34 @@ class BiLSTM_CRF(nn.Module):
         # 包装到一个变量里面以便自动反向传播
         forward_var = init_alphas  # 初始状态的forward_var，随着step t变化
 
-        # 遍历句子，迭代feats的行数次
+        # 遍历句子，迭代feats的行数次，就是一个词一个词遍历 每个feat是一个词嵌入经过lstm和降维后的标签概率矩阵
         for feat in feats:
             alphas_t = []  # 当前时间步的正向tensor
-            for next_tag in range(self.tagset_size):  # 行遍历计算转移分数,   ---->循环一次计算一个单词
+            for next_tag in range(self.tagset_size):  # 行遍历计算转移分数,   ---->循环计算每个tag，tagset就是B，I，O，ST，SP
                 # broadcast the emission score: it is the same regardless of the previous tag
                 # LSTM的生成矩阵是emit_score，维度为1*5
-                emit_score = feat[next_tag].view(1, -1).expand(1, self.tagset_size)
+                emit_score = feat[next_tag].view(1, -1).expand(1, self.tagset_size)  # 取出当前词对于当前tag对象的概率后扩充为5个
                 # the ith entry of trans_score is the score of transitioning to next_tag from i
-                # trans_score的第i个条目是从i过渡到next_tag的分数
-                trans_score = self.transitions[next_tag].view(1, -1)  # view(1, -1)转化为一行 #维度是1*5，取转移矩阵第一行
+                # trans_score的第i个条目是从i过渡到next_tag的分数 ，取转移矩阵的对应tag的行，该行中每列表示的是该列对应的tag转移到当前tag的概率
+                trans_score = self.transitions[next_tag].view(1, -1)  # view(1, -1)转化为一行维度是1*5
                 # The ith entry of next_tag_var is the value for the edge (i -> next_tag) before we do log-sum-exp
                 # 第一次迭代时理解：trans_score是所有其他标签到Ｂ标签的概率
                 # emit_scores是由lstm运行进入隐层再到输出层得到标签Ｂ的概率，emit_score维度是１＊５，5个值是相同的
-                next_tag_var = forward_var + trans_score + emit_score
+                next_tag_var = forward_var + trans_score + emit_score  # 这里就是公式中的简易计算方法，通过前一个tag的计算参数推导后一个
                 # The forward variable for this tag is log-sum-exp of all the scores.
                 alphas_t.append(log_sum_exp(next_tag_var).view(1))
-                # 此时的alphas_t 是一个长度为5，例如<class 'list'>:
-                # [tensor(0.8259), tensor(2.1739), tensor(1.3526), tensor(-9999.7168), tensor(-0.7102)]
-            forward_var = torch.cat(alphas_t).view(1, -1)  # 计算玩一个词的前向参数概率后把该值融入前向变量，多个单值tensor变一个
+
+            # 此时的alphas_t 是一个长度为5，例如<class 'list'>:
+            # [tensor(0.8259), tensor(2.1739), tensor(1.3526), tensor(-9999.7168), tensor(-0.7102)]
+            forward_var = torch.cat(alphas_t).view(1, -1)  # 计算好一个tag的前向参数概率后把该值融入前向变量
+
         # 最后只将最后一个单词的forward_var与转移 stop tag的概率相加
         # tensor([[   21.1036,    18.8673,    20.7906, -9982.2734, -9980.3135]])
         terminal_var = forward_var + self.transitions[self.tag_to_ix[STOP_TAG]]
-        alpha = log_sum_exp(terminal_var)  # alpha是一个0维的tensor
+        alpha = log_sum_exp(terminal_var)  # alpha是一个0维的tensor即一个值
         return alpha
 
-    def _get_lstm_features(self, sentence):  # 仅仅是BiLSTM的输出没有CRF层
+    def _get_lstm_features(self, sentence):  # 仅仅是得到BiLSTM的输出没有CRF层
         '''
         LSTM的数据输入是以这样的形式输入的：（序列长度，batch，输入大小），下面的是LSTM的文档中定义的使用方法
         input_size指输入数据的维度
@@ -122,29 +126,37 @@ class BiLSTM_CRF(nn.Module):
           See :func:`torch.nn.utils.rnn.pack_padded_sequence` or
           :func:`torch.nn.utils.rnn.pack_sequence` for details.
         '''
-        self.hidden = self.init_hidden()  # 一开始的隐藏状态，得到h0和c0
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 这里是该batch关键
-        lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 最后输出结果和最后的隐藏状态 ，这里是作为lstm的输入参数传入计算
+        self.hidden = self.init_hidden()  # 初始化lstm网络的隐藏状态，就是随机初始化得到h0和c0
+        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 把现在处理的句子中的词使用词向量替代
+        lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 最后输出结果和最后的隐藏状态 ，这里embeds作为lstm的输入参数传入计算
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)
-        lstm_feats = self.hidden2tag(lstm_out)  # 把lstm输出映射到输出层上，主要是做维度压缩
+        lstm_feats = self.hidden2tag(lstm_out)  # 把lstm输出映射到输出层上，就是要把神经网络的输出映射到标签个数的维度上，128->5
+        # print("---")
+        # print(embeds)
+        # print(lstm_out)
+        # print(lstm_feats)
+        # print("===")
         return lstm_feats
 
-    def _score_sentence(self, feats, tags):  # 求Loss function的第二项 tags输入的是？
+    def _score_sentence(self, feats, tags):  # 求Loss function的第二项 tags输入的是正确序列
         # Gives the score of a provided tag sequence
         # 这与上面的def _forward_alg(self, feats)共同之处在于：
         # 两者都是用的随机转移矩阵算的score，不同地方在于，上面那个函数算了一个最大可能路径，
         # 但实际上可能不是真实的各个标签转移的值 例如：真实标签是N V V,但是因为transitions是随机的，
         # 所以上面的函数得到其实是N N N这样，两者之间的score就有了差距。而后来的反向传播，就能够更新transitions，
         # 使得转移矩阵逼近真实的“转移矩阵”得到gold_seq tag的score 即根据真实的label 来计算一个score，
-        # 但是因为转移矩阵是随机生成的，故算出来的score不是最理想的值
+        # 但是因为转移矩阵是随机生成的，故算出来的score不是最理想的值，也就是当前值
         score = torch.zeros(1)  # 初始化分数为0
-        # 将START_TAG的标签３拼接到tag序列最前面  B  I  O  START_TAG STOP_TAG
+        # 将START_TAG的标签３拼接到tag序列最前面  就是在每个句子的开头加上start_tag(3) 3---
         tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
+
         for i, feat in enumerate(feats):  # 循环各个词
             # self.transitions[tags[i + 1], tags[i]] 实际得到的是从标签i到标签i+1的转移概率
-            # feat[tags[i+1]], feat是step i 的输出结果，有５个值，
-            # 对应B, I, O, START_TAG, END_TAG, 取对应标签的值
+            # tags[i+1]是当前word对应的tag的编号，加1是因为在句子开头加了start_tag所以访问的时候要加1
+            # feat[tags[i+1]]是当前遍历到的word的lstm的输出结果，有５个值对应于各标签概率，
             # transition【j,i】 就是从i ->j 的转移概率值
+            # self.transitions[tags[i + 1], tags[i]] 就是输入目标tag序列中当前位置的上一个标记转移到当前位置标记，这一i,j对在转移矩阵中的概率
+            # feat是当前word的lstm输出
             score = score + self.transitions[tags[i + 1], tags[i]] + feat[tags[i + 1]]
         score = score + self.transitions[self.tag_to_ix[STOP_TAG], tags[-1]]
         return score
@@ -196,8 +208,10 @@ class BiLSTM_CRF(nn.Module):
 
     def neg_log_likelihood(self, sentence, tags):  # loss function 计算误差
         feats = self._get_lstm_features(sentence)  # 经过LSTM+Linear后的输出作为CRF的输入
+        # feats是lstm的输出，是每个词的概率矩阵的集合  sentence_len*EMBEDDING_DIM
         forward_score = self._forward_alg(feats)  # loss的log部分的结果
         gold_score = self._score_sentence(feats, tags)  # loss的后半部分S(X,y)的结果
+        # forward得到最大可能路径与   gold_score是根据真实label计算得到的目标序列的分数
         return forward_score - gold_score  # Loss
 
     def forward(self, sentence):  # sentence是已经编码的句子
@@ -253,7 +267,7 @@ def train():
         print(model(precheck_sent))  # (tensor(2.6907), [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1])
 
     # Make sure prepare_sequence from earlier in the LSTM section is loaded
-    for epoch in range(30):  # 循环次数可以自己设定
+    for epoch in range(100):  # 循环次数可以自己设定
         index = 0
         for sentence, tags in training_data1:
             index += 1
@@ -268,7 +282,9 @@ def train():
 
             # Step 3. Run our forward pass.
             loss = model.neg_log_likelihood(sentence_in, targets)
-
+            print("""epoch [{}] loss {:.2f}""".format(
+                epoch, index, loss.cpu().tolist()[0]
+            ))
             # Step 4. Compute the loss, gradients, and update the parameters by
             # calling optimizer.step()
             loss.backward()
@@ -329,5 +345,5 @@ def calculater_P():
     pass
 
 
-# train()
+train()
 load_model()

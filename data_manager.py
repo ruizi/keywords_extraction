@@ -5,10 +5,11 @@
 '''
 import copy
 import pickle as cPickle
+import json
 
 
 class DataManager():
-    def __init__(self, max_length=100, batch_size=20, data_type='train', tags=[]):
+    def __init__(self, max_length=100, batch_size=20, data_type='train'):
         self.index = 0
         self.input_size = 0
         self.batch_size = batch_size  # 初始化batch大小
@@ -16,16 +17,15 @@ class DataManager():
         self.data_type = data_type  # 这是一个控制器，用来选择是提取训练数据/测试数据
         self.data = []
         self.batch_data = []
-        self.vocab = {"unk": 0}
-        # self.tag_map = {"O":0, "B-ORG":1, "I-ORG":2, "E-ORG":3, "B-PER":4, "I-PER":5, "E-PER":6, "S":7}
+        self.vocab = {"unk": 0, "bat_pad": 1}
         self.tag_map = {"B": 0, "I": 1, "O": 2, "START": 3, "STOP": 4}  # 这里改为 B I O Start Stop |OK
 
         if data_type == "train":
             # assert tags, Exception("请指定需要训练的tag类型，如[\"ORG\", \"PER\"]")
             # self.generate_tags(tags)
-            self.data_path = "Data/kp20k_valid2k_test.json"  # 制定数据路径
+            self.data_path = "Data/kp20k_valid500_taged.json"  # 制定数据路径
         elif data_type == "dev":
-            self.data_path = "data/dev"
+            self.data_path = "Data/kp20k_valid500_taged.json"
             self.load_data_map()  # 验证/测试集就先直接进相应函数
         elif data_type == "test":
             self.data_path = "data/test"
@@ -33,8 +33,6 @@ class DataManager():
 
         self.load_data()  # 训练集载入，load_data做的工作是读入word-tag数据，word组成sentence存好，tag组成target存好，同时构建好词表
         self.prepare_batch()  # 准备batch
-
-        self.loc_now = 0
 
     def generate_tags(self, tags):
         self.tags = []
@@ -53,28 +51,26 @@ class DataManager():
     def load_data(self):  # 数据集载入->清理->存入data
         # load data
         # add vocab
-        # covert to one-hot
-        sentence = []
-        target = []
-        with open(self.data_path) as f:  # 读取数据文件
+        # covert to one-hot  使用的是one-hot编码
+        # 数据读入块
+        training_data1 = []
 
-            for line in f:  # 读取一行处理一行，这里使用的是 序 O word-tag存储方式，要改为自己的数据预处理
-                line = line[:-1]
-                if line == "end":  # 该project数据集合中使用end来分割上下条数据
-                    self.data.append([sentence, target])  # 一个句子到了最后一行的时候把sentence和tag组合放入data
-                    sentence = []  # 为下条数据做准备，初始化置空
-                    target = []
-                    continue
-                try:
-                    word, tag = line.split(" ")  # 提取到了word 和 tag
-                except Exception:
-                    continue
-                if word not in self.vocab and self.data_type == "train":
-                    self.vocab[word] = max(self.vocab.values()) + 1  # 构建词表
-                if tag not in self.tag_map and self.data_type == "train" and tag in self.tags:  # tag表，不用，就是BIOSS
-                    self.tag_map[tag] = len(self.tag_map.keys())
-                sentence.append(self.vocab.get(word, 0))  # 重新组合成句子了
-                target.append(self.tag_map.get(tag, 0))  # 把正确序列标注即网络的为目标放入target
+        with open(self.data_path) as fp:  # 从在init中指定的路径读取数据
+            data = json.load(fp)
+            for paper in data:
+                abstract = paper['abstract']
+                tags = paper['tags']
+                for word in abstract:  # 给每一个不重复的词进行编码，比如‘HELLO WORLD’就是{'HELLO':0,'WORLD:1'}
+                    if word not in self.vocab and self.data_type == "train":
+                        self.vocab[word] = max(self.vocab.values()) + 1  # 构建词表
+                sentence = [self.vocab.get(word, 0) for word in abstract]  # 使用one_hot编码重新组合成句子了
+                target = [self.tag_map.get(tag, 0) for tag in tags]  # 把正确序列标注的one_hot编码放入target
+                self.data.append([sentence, target])  # 一个句子到了最后一行的时候把sentence和tag组合放入data
+
+        json_vocab = json.dumps(self.vocab)
+        with open('Data/word_vocabulary/vocab.json', 'w') as json_file:
+            json_file.write(json_vocab)
+
         self.input_size = len(self.vocab.values())  # 输入的大小维度是词表的长度
         print("{} data: {}".format(self.data_type, len(self.data)))
         print("vocab size: {}".format(self.input_size))
@@ -113,28 +109,23 @@ class DataManager():
     def pad_data(self, data):  # 传入batch_size条数据，该函数用来长短对齐
         c_data = copy.deepcopy(data)
         max_length = max([len(i[0]) for i in c_data])  # 得到batch句子的最大长度
+        # print("max_length:")
+        # print(max_length)
         for i in c_data:
             i.append(len(i[0]))  # 加入一个sentence的长度在末尾
-            i[0] = i[0] + (max_length - len(i[0])) * [0]  # 这是在末尾补0，来使得大家长短一样
-            i[1] = i[1] + (max_length - len(i[1])) * [0]
+            i[0] = i[0] + (max_length - len(i[0])) * [1]  # 这是在末尾补占位符，来使得大家长短一样
+            i[1] = i[1] + (max_length - len(i[1])) * [1]
             # i[0] = torch.tensor(i[0])
             # i[1] = torch.tensor(i[1])
         return c_data
 
     def iteration(self):  # 循环输出batch
-        if self.loc_now != len(self.batch_data):
-            data = self.batch_data[self.loc_now]
-            self.loc_now += 1
-            return data
-        else:
-            return None
-
-        # idx = 0
-        # while True:
-        #     yield self.batch_data[idx]  # 返回第idx个batch
-        #     idx += 1
-        #     if idx > len(self.batch_data) - 1:
-        #         idx = 0
+        idx = 0
+        while True:
+            yield self.batch_data[idx]  # 返回第idx个batch
+            idx += 1
+            if idx > len(self.batch_data) - 1:
+                idx = 0
 
     def get_batch(self):  # 返回batch
         for data in self.batch_data:
