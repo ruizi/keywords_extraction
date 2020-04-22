@@ -67,7 +67,7 @@ def word2tag(data):
         paper_tag['tags'] = BIOtag
         data_tags.append(paper_tag)
         index += 1
-    with open('Data/kp20k_valid2k_short_taged.json', 'w') as fp:
+    with open('Data/kp20k_valid500_short_taged.json', 'w') as fp:
         json.dump(data_tags, fp=fp)
 
 
@@ -102,5 +102,5 @@ def sentence_short2tag(data):
 data = read_test()
 print(len(data))
 # 3. 把标准化的json中的keywords和abstract 分词，词性还原，匹配打上tag后返回写入文件，到这里就完成bilstm-crf的输入
-# word2tag(data)
-sentence_short2tag(data)
+word2tag(data)
+# sentence_short2tag(data)

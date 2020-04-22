@@ -18,11 +18,11 @@ STOP_TAG = "STOP"
 # Compute log sum exp in a numerically stable way for the forward algorithm
 # 以数值稳定的方式为前向算法计算对数和exp
 
-# def log_sum_exp(vec):
-#     max_score = torch.max(vec, 0)[0].unsqueeze(0)
-#     max_score_broadcast = max_score.expand(vec.size(1), vec.size(1))
-#     result = max_score + torch.log(torch.sum(torch.exp(vec - max_score_broadcast), 0)).unsqueeze(0)
-#     return result.squeeze(1)
+def log_sum_exp1(vec):
+    max_score = torch.max(vec, 0)[0].unsqueeze(0)
+    max_score_broadcast = max_score.expand(vec.size(1), vec.size(1))
+    result = max_score + torch.log(torch.sum(torch.exp(vec - max_score_broadcast), 0)).unsqueeze(0)
+    return result.squeeze(1)
 # Compute log sum exp in a numerically stable way for the forward algorithm
 
 # 以数值稳定的方式为前向算法计算对数和exp
@@ -217,24 +217,24 @@ class BiLSTM_CRF(nn.Module):
         return alpha
 
     # viterbi解码faster
-    # def _viterbi_decode(self, logits):
-    #     backpointers = []
-    #     trellis = torch.zeros(logits.size())
-    #     backpointers = torch.zeros(logits.size(), dtype=torch.long)
-    #
-    #     trellis[0] = logits[0]
-    #     for t in range(1, len(logits)):
-    #         v = trellis[t - 1].unsqueeze(1).expand_as(self.transitions) + self.transitions
-    #         trellis[t] = logits[t] + torch.max(v, 0)[0]
-    #         backpointers[t] = torch.max(v, 0)[1]
-    #     viterbi = [torch.max(trellis[-1], -1)[1].cpu().tolist()]
-    #     backpointers = backpointers.numpy()
-    #     for bp in reversed(backpointers[1:]):
-    #         viterbi.append(bp[viterbi[-1]])
-    #     viterbi.reverse()
-    #
-    #     viterbi_score = torch.max(trellis[-1], 0)[0].cpu().tolist()
-    #     return viterbi_score, viterbi
+    def _viterbi_decode_faster(self, logits):
+        backpointers = []
+        trellis = torch.zeros(logits.size())
+        backpointers = torch.zeros(logits.size(), dtype=torch.long)
+
+        trellis[0] = logits[0]
+        for t in range(1, len(logits)):
+            v = trellis[t - 1].unsqueeze(1).expand_as(self.transitions) + self.transitions
+            trellis[t] = logits[t] + torch.max(v, 0)[0]
+            backpointers[t] = torch.max(v, 0)[1]
+        viterbi = [torch.max(trellis[-1], -1)[1].cpu().tolist()]
+        backpointers = backpointers.numpy()
+        for bp in reversed(backpointers[1:]):
+            viterbi.append(bp[viterbi[-1]])
+        viterbi.reverse()
+
+        viterbi_score = torch.max(trellis[-1], 0)[0].cpu().tolist()
+        return viterbi_score, viterbi
 
     def _viterbi_decode(self, feats):
         # 预测序列的得分，维特比解码，输出得分与路径值
@@ -307,7 +307,7 @@ class BiLSTM_CRF(nn.Module):
         # print(score)
         return score
 
-    def total_score(self, logits, label):  # loss右边第一项
+    def total_score(self, logits):  # loss右边第一项
         """
         caculate total score
 
@@ -322,10 +322,10 @@ class BiLSTM_CRF(nn.Module):
             previous = previous.expand(self.tag_size, self.tag_size).t()  # 扩大后转置
             obs = logits[index].view(1, -1).expand(self.tag_size, self.tag_size)
             scores = previous + obs + self.transitions
-            previous = log_sum_exp(scores)
+            previous = log_sum_exp1(scores)
         previous = previous + self.transitions[self.tag_map[STOP_TAG], :]
         # caculate total_scores
-        total_scores = log_sum_exp(previous.t())[0]
+        total_scores = log_sum_exp1(previous.t())[0]
         return total_scores
 
     def neg_log_likelihood(self, sentences, tags, length):  # loss计算
@@ -367,7 +367,7 @@ class BiLSTM_CRF(nn.Module):
         paths = []
         for logit, leng in zip(logits, lengths):
             logit = logit[:leng]  # 去掉pad
-            score, path = self._viterbi_decode(logit)  # 使用viterbi算法解码得到最佳路径
+            score, path = self._viterbi_decode_faster(logit)  # 使用viterbi算法解码得到最佳路径
             scores.append(score)
             paths.append(path)
         return scores, paths

@@ -88,10 +88,10 @@ def f1_score1(tar_path, pre_path, tag_map):  # tag是类型标签
         tar, pre = fetch
         tar_tags = get_tags(tar, tag_map)
         pre_tags = get_tags(pre, tag_map)
-        print(tar)
-        print("tar_tags:" + str(tar_tags))
-        print(pre)
-        print("pre_tags:" + str(pre_tags))
+        # print(tar)
+        # print("tar_tags:" + str(tar_tags))
+        # print(pre)
+        # print("pre_tags:" + str(pre_tags))
         origin += len(tar_tags)
         found += len(pre_tags)
 

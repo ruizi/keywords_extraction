@@ -62,7 +62,7 @@ class keywords_extraction(object):
             self.save_params(data)  # 把相关参数做存储
 
             # dev板块
-            dev_manager = DataManager(batch_size=20, data_type="dev")
+            dev_manager = DataManager(batch_size=self.batch_size, data_type="dev")
             self.dev_batch = dev_manager.iteration()
 
             # 模型初始化定义
@@ -96,7 +96,7 @@ class keywords_extraction(object):
 
     def restore_model(self):
         try:
-            self.model.load_state_dict(torch.load(self.model_path + "params.pkl"))
+            self.model.load_state_dict(torch.load(self.model_path + "params2.pkl"))
             print("model restore success!")
         except Exception as error:
             print("model restore faild! {}".format(error))
@@ -114,7 +114,7 @@ class keywords_extraction(object):
         optimizer = optim.SGD(self.model.parameters(), lr=0.005, weight_decay=1e-4)  # 定义优化器，采用随机梯度下降
         # optimizer = optim.Adam(self.model.parameters())
         # optimizer = optim.SGD(ner_model.parameters(), lr=0.01)
-        for epoch in range(50):
+        for epoch in range(30):
             index = 0
             epoch_loss = 0
             for batch in self.train_manager.get_batch():  # 从data_manager中导入配置
@@ -130,34 +130,34 @@ class keywords_extraction(object):
                 loss = self.model.neg_log_likelihood(sentences_tensor, tags_tensor, length_tensor)  # 损失计算
                 epoch_loss += loss
                 print("""epoch [{}]  {}/{} \tloss {:.2f}""".format(epoch, index, self.total_size,
-                                                                    loss.cpu().tolist()[0]))
+                                                                   loss.cpu().tolist()[0]))
                 # 评估当前batch效果
-                self.evaluate()
+
                 # 反向传播优化
                 loss.backward()
                 optimizer.step()
                 # 存储当前网络参数
             print("=======================================epoch_loss:", epoch_loss)
-            torch.save(self.model.state_dict(), self.model_path + 'params1.pkl')
+            self.evaluate()
+            torch.save(self.model.state_dict(), self.model_path + 'params2.pkl')
 
     def evaluate(self):
         sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
         with torch.no_grad():
             _, paths = self.model(sentences)  # 代入模型计算得到输出为paths
-        print("\tevaluate_this_batch")
+        # print("\tevaluate_this_batch")
         f1_score(labels, paths, self.model.tag_map)  # 代入计算函数
 
     def PRF1(self):
-        sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
-        print(sentences[1])
-        print(labels[1])
-        with torch.no_grad():
+        for i in range(50):
+            sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
+            # print(sentences[1])
+            # print(labels[1])
+            # with torch.no_grad():
             _, paths = self.model(sentences)  # 代入模型计算得到输出为paths
-            # for path in paths:
-            #     print(path)
-        print(paths[1])
-        print(labels[1])
-        f1_score1(labels, paths, self.model.tag_map)  # 代入计算函数
+            # print(paths[1])
+            # print(labels[1])
+            f1_score1(labels, paths, self.model.tag_map)  # 代入计算函数
 
 
 # def train():
