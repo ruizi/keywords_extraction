@@ -2,10 +2,10 @@ import json
 import os
 import random
 import re
-from clean_and_tag import abstract_keyword
+from clean_and_tag import abstract_keyword, abstract_keyword1
 
 
-# 该函数用来从原始kp20k数据集中
+# 该函数用来从原始kp20k数据集中提取摘要和关键词
 def data_read_and_clean():
     examples = []
     trg_count = 0
@@ -43,7 +43,7 @@ def data_read_and_clean():
 
 # data_short1.json / kp20k_valid500.json / Data/kp20k_valid2k.json /kp20k_train20k.json
 def read_test():
-    with open('Data/kp20k_train20k.json', 'r') as fp:
+    with open('Data/kp20k_valid500.json', 'r') as fp:
         data = json.load(fp)
     return data
 
@@ -59,13 +59,15 @@ def word2tag(data):
 
         print("processing %s/20000" % index)
 
-        abstract_clean, BIOtag = abstract_keyword(abstract, keywords)
+        abstract_clean, BIOtag = abstract_keyword1(abstract, keywords)
+        if len(abstract_clean) == 0 or len(BIOtag) == 0:
+            continue
         paper_tag['id'] = index
         paper_tag['abstract'] = abstract_clean
         paper_tag['tags'] = BIOtag
         data_tags.append(paper_tag)
         index += 1
-    with open('Data/kp20k_train20k_taged.json', 'w') as fp:
+    with open('Data/kp20k_tes500_taged1.json', 'w') as fp:
         json.dump(data_tags, fp=fp)
 
 

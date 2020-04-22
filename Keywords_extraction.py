@@ -45,7 +45,7 @@ class keywords_extraction(object):
         self.hidden_size = config.get("hidden_size")
         self.batch_size = config.get("batch_size")
         self.model_path = config.get("model_path")
-        self.tags = config.get("tags")
+        # self.tags = config.get("tags")
         self.dropout = config.get("dropout")
 
     # 初始化模型
@@ -62,7 +62,7 @@ class keywords_extraction(object):
             self.save_params(data)  # 把相关参数做存储
 
             # dev板块
-            dev_manager = DataManager(batch_size=20, data_type="dev")
+            dev_manager = DataManager(batch_size=2, data_type="dev")
             self.dev_batch = dev_manager.iteration()
 
             # 模型初始化定义
@@ -76,7 +76,7 @@ class keywords_extraction(object):
             )
 
             # 先定义好模型，然后载入已经训练好的模型，如果存在
-            # self.restore_model()
+            self.restore_model()
 
         elif entry == "predict":
             data_map = self.load_params()
@@ -111,7 +111,7 @@ class keywords_extraction(object):
         return data_map
 
     def train(self):
-        optimizer = optim.SGD(self.model.parameters(), lr=0.001, weight_decay=1e-4)  # 定义优化器，采用随机梯度下降
+        optimizer = optim.SGD(self.model.parameters(), lr=0.005, weight_decay=1e-4)  # 定义优化器，采用随机梯度下降
         # optimizer = optim.Adam(self.model.parameters())
         # optimizer = optim.SGD(ner_model.parameters(), lr=0.01)
         for epoch in range(100):
@@ -144,7 +144,8 @@ class keywords_extraction(object):
         sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
         # print(sentences)
         # print(labels)
-        _, paths = self.model(sentences)  # 代入模型计算得到输出为paths
+        with torch.no_grad():
+            _, paths = self.model(sentences)  # 代入模型计算得到输出为paths
         # print(len(paths[1]))
         # print(paths[0])
         # print(len(labels[0]))
@@ -154,12 +155,14 @@ class keywords_extraction(object):
 
     def PRF1(self):
         sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
-        print(sentences[6])
-        print(labels[6])
+        print(sentences[1])
+        print(labels[1])
         with torch.no_grad():
             _, paths = self.model(sentences)  # 代入模型计算得到输出为paths
-        print(paths[6])
-        print(labels[6])
+            # for path in paths:
+            #     print(path)
+        print(paths[1])
+        print(labels[1])
         f1_score1(labels, paths, self.model.tag_map)  # 代入计算函数
 
 

@@ -23,9 +23,9 @@ class DataManager():
         if data_type == "train":
             # assert tags, Exception("请指定需要训练的tag类型，如[\"ORG\", \"PER\"]")
             # self.generate_tags(tags)
-            self.data_path = "Data/kp20k_valid500_taged.json"  # 制定数据路径
+            self.data_path = "Data/kp20k_tes500_taged1.json"  # 制定数据路径
         elif data_type == "dev":
-            self.data_path = "Data/kp20k_valid500_taged.json"
+            self.data_path = "Data/kp20k_tes500_taged1.json"
             self.load_data_map()  # 验证/测试集就先直接进相应函数
         elif data_type == "test":
             self.data_path = "data/test"
@@ -114,7 +114,7 @@ class DataManager():
         for i in c_data:
             i.append(len(i[0]))  # 加入一个sentence的长度在末尾
             i[0] = i[0] + (max_length - len(i[0])) * [1]  # 这是在末尾补占位符，来使得大家长短一样
-            i[1] = i[1] + (max_length - len(i[1])) * [1]
+            i[1] = i[1] + (max_length - len(i[1])) * [2]
             # i[0] = torch.tensor(i[0])
             # i[1] = torch.tensor(i[1])
         return c_data
