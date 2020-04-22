@@ -1,5 +1,5 @@
-embedding_size: 32
-hidden_size: 32
+embedding_size: 128
+hidden_size: 128
 model_path: models/
-batch_size: 10
+batch_size: 20
 dropout: 0.5

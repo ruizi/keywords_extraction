@@ -79,6 +79,7 @@ def f1_score(tar_path, pre_path, tag_map):  # tag是类型标签
     print("recall {:.2f}\tprecision {:.2f}\tf1 {:.2f}".format(recall, precision, f1))
     return recall, precision, f1
 
+
 def f1_score1(tar_path, pre_path, tag_map):  # tag是类型标签
     origin = 0.
     found = 0.
@@ -87,7 +88,9 @@ def f1_score1(tar_path, pre_path, tag_map):  # tag是类型标签
         tar, pre = fetch
         tar_tags = get_tags(tar, tag_map)
         pre_tags = get_tags(pre, tag_map)
+        print(tar)
         print("tar_tags:" + str(tar_tags))
+        print(pre)
         print("pre_tags:" + str(pre_tags))
         origin += len(tar_tags)
         found += len(pre_tags)
@@ -95,7 +98,10 @@ def f1_score1(tar_path, pre_path, tag_map):  # tag是类型标签
         for p_tag in pre_tags:
             if p_tag in tar_tags:
                 right += 1
-
+        # print("right:", right)
+    print("该batch中关键词个数：", origin)
+    print("模型输出的关键词个数：", found)
+    print("模型命中的关键词个数：", right)
     recall = 0. if origin == 0 else (right / origin)
     precision = 0. if found == 0 else (right / found)
     f1 = 0. if recall + precision == 0 else (2 * precision * recall) / (precision + recall)

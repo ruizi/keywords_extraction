@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" host="ruitsai.tech" id="ac6f7c04-6ecf-4f82-b468-df43449446d6" port="22" customName="ruitsai.tech" nameFormat="CUSTOM" username="root" />
+    </configs>
+  </component>
+</project>

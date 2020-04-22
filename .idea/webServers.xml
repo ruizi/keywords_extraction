@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="f815b9e5-c31e-4006-9182-eb5c3036f2cd" name="ruitsai.tech" url="http://ruitsai.tech">
+        <fileTransfer accessType="SFTP" host="ruitsai.tech" port="22" sshConfigId="ac6f7c04-6ecf-4f82-b468-df43449446d6" sshConfig="ruitsai.tech">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
