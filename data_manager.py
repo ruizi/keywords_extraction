@@ -23,9 +23,9 @@ class DataManager():
         if data_type == "train":
             # assert tags, Exception("请指定需要训练的tag类型，如[\"ORG\", \"PER\"]")
             # self.generate_tags(tags)
-            self.data_path = "Data/kp20k_valid2k_short_taged.json"  # 制定数据路径
+            self.data_path = "Data/kp20k_valid2k_sep_taged.json"  # 制定数据路径
         elif data_type == "dev":
-            self.data_path = "Data/kp20k_valid500_short_taged.json"
+            self.data_path = "Data/ori_test_used/100valid_test_sep_taged.json"
             self.load_data_map()  # 验证/测试集就先直接进相应函数
         elif data_type == "test":
             self.data_path = "data/test"

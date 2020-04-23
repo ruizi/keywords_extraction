@@ -1,5 +1,9 @@
 embedding_size: 128
 hidden_size: 128
 model_path: models/
-batch_size: 50
+batch_size: 128
 dropout: 0.5
+# hidden->200
+# embedding->300
+
+# 晚上p=0.89的使用 em:128 hi:128 batch:50 valid500_sep_taged    dev batch 10

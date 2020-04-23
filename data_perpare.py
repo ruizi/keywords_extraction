@@ -11,7 +11,7 @@ def data_read_and_clean():
     trg_count = 0
     valid_trg_count = 0
     data = []
-    for line_id, line in enumerate(open('Data/kp20k_train20k_test.json', 'r')):
+    for line_id, line in enumerate(open('Data/ori_test_used/kp20k_train20k_test.json', 'r')):
         paper = {}
         print("Processing %d" % line_id)
         print(line)
@@ -37,13 +37,13 @@ def data_read_and_clean():
         # keywords = [re.sub(r'\(.*?\)|\[.*?\]|\{.*?\}', '', kw) for kw in keywords]
         # print(keywords)
         data.append(paper)
-    with open('Data/kp20k_train20k.json', 'w') as fp:
+    with open('Data/ori_test_used/kp20k_train20k.json', 'w') as fp:
         json.dump(data, fp=fp)
 
 
 # data_short1.json / kp20k_valid500.json / Data/kp20k_valid2k.json /kp20k_train20k.json
 def read_test():
-    with open('Data/kp20k_valid500.json', 'r') as fp:
+    with open('Data/ori_test_used/kp20k_train20k.json', 'r') as fp:
         data = json.load(fp)
     return data
 
@@ -67,7 +67,7 @@ def word2tag(data):
         paper_tag['tags'] = BIOtag
         data_tags.append(paper_tag)
         index += 1
-    with open('Data/kp20k_valid500_short_taged.json', 'w') as fp:
+    with open('Data/ori_test_used/kp20k_valid500_short_taged.json', 'w') as fp:
         json.dump(data_tags, fp=fp)
 
 
@@ -76,7 +76,7 @@ def sentence_short2tag(data):
     index = 0
     for paper in data:
         print(paper)
-        paper_tag = {}
+
         keywords = paper['keywords']
         abstract = paper['abstract']
 
@@ -86,13 +86,14 @@ def sentence_short2tag(data):
         for short_sentence, short_tag in zip(short_abstracts_sentence, short_abstracts_tag):
             if len(short_sentence) == 0 or len(short_tag) == 0:
                 continue
+            paper_tag = {}
             paper_tag['id'] = index
             paper_tag['abstract'] = short_sentence
             paper_tag['tags'] = short_tag
             data_tags.append(paper_tag)
         index = index + 1
 
-    with open('Data/kp20k_valid500_sep_taged.json', 'w') as fp:
+    with open('Data/kp20k_train20k_sep_taged.json', 'w') as fp:
         json.dump(data_tags, fp=fp)
 
 
@@ -102,5 +103,5 @@ def sentence_short2tag(data):
 data = read_test()
 print(len(data))
 # 3. 把标准化的json中的keywords和abstract 分词，词性还原，匹配打上tag后返回写入文件，到这里就完成bilstm-crf的输入
-word2tag(data)
-# sentence_short2tag(data)
+# word2tag(data)
+sentence_short2tag(data)
