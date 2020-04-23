@@ -13,7 +13,7 @@ class DataManager():
         self.index = 0
         self.input_size = 0
         self.batch_size = batch_size  # 初始化batch大小
-        self.max_length = max_length  # 初始化最长序列长度
+        self.max_length = max_length  # 初始化batch中最长序列长度
         self.data_type = data_type  # 这是一个控制器，用来选择是提取训练数据/测试数据
         self.data = []
         self.batch_data = []
@@ -21,25 +21,16 @@ class DataManager():
         self.tag_map = {"B": 0, "I": 1, "O": 2, "START": 3, "STOP": 4}  # 这里改为 B I O Start Stop |OK
 
         if data_type == "train":
-            # assert tags, Exception("请指定需要训练的tag类型，如[\"ORG\", \"PER\"]")
-            # self.generate_tags(tags)
-            self.data_path = "Data/kp20k_valid2k_sep_taged.json"  # 制定数据路径
+            self.data_path = "Data/kp20k_train20k_sep_taged.json"  # 制定数据路径
         elif data_type == "dev":
-            self.data_path = "Data/ori_test_used/100valid_test_sep_taged.json"
+            self.data_path = "Data/kp20k_valid2k_sep_taged.json"
             self.load_data_map()  # 验证/测试集就先直接进相应函数
         elif data_type == "test":
-            self.data_path = "data/test"
+            self.data_path = "data/kp20k_valid2k_sep_taged.json"
             self.load_data_map()  # 测试集就先直接进相应函数，载入训练好的模型参数
 
         self.load_data()  # 训练集载入，load_data做的工作是读入word-tag数据，word组成sentence存好，tag组成target存好，同时构建好词表
         self.prepare_batch()  # 准备batch
-
-    def generate_tags(self, tags):
-        self.tags = []
-        for tag in tags:
-            for prefix in ["B-", "I-", "E-"]:
-                self.tags.append(prefix + tag)
-        self.tags.append("O")
 
     def load_data_map(self):  # 从存储好的模型中载入词表和tag表
         with open("models/data.pkl", "rb") as f:
@@ -78,8 +69,6 @@ class DataManager():
         print("-" * 50)
 
     def convert_tag(self, data):
-        # add E-XXX for tags
-        # add O-XXX for tags
         _, tags = data
         converted_tags = []
         for _, tag in enumerate(tags[:-1]):

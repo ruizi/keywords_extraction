@@ -61,7 +61,7 @@ class keywords_extraction(object):
             self.save_params(data)  # 把相关参数做存储
 
             # dev板块
-            dev_manager = DataManager(batch_size=20, data_type="dev")
+            dev_manager = DataManager(batch_size=128, data_type="dev")
             self.dev_batch = dev_manager.iteration()
 
             # 模型初始化定义
@@ -90,12 +90,26 @@ class keywords_extraction(object):
             )
             # self.restore_model()
 
-        else:
-            pass
+        elif entry == "test":
+            # dev板块
+            test_manager = DataManager(batch_size=128, data_type="test")
+            self.dev_batch = test_manager.iteration()
+            # 模型初始化定义
+            self.model = BiLSTM_CRF(
+                len(self.train_manager.vocab),
+                self.train_manager.tag_map,
+                self.embedding_size,
+                self.hidden_size,
+                self.batch_size,
+                self.dropout,
+            )
+
+            # 先定义好模型，然后载入已经训练好的模型，如果存在
+            self.restore_model()
 
     def restore_model(self):
         try:
-            self.model.load_state_dict(torch.load(self.model_path + "valid500_sep_taged_batch128.pkl"))
+            self.model.load_state_dict(torch.load(self.model_path + "train20k_sep_taged_batch256.pkl"))
             print("model restore success!")
         except Exception as error:
             print("model restore faild! {}".format(error))
@@ -135,7 +149,7 @@ class keywords_extraction(object):
                 optimizer.step()
                 # 存储当前网络参数
             print("=======================================epoch_loss:", epoch_loss)
-            torch.save(self.model.state_dict(), self.model_path + 'valid500_sep_taged_batch128.pkl')
+            torch.save(self.model.state_dict(), self.model_path + 'train20k_sep_taged_batch256.pkl')
 
     def evaluate(self):
         sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
@@ -145,7 +159,7 @@ class keywords_extraction(object):
         f1_score(labels, paths, self.model.tag_map)  # 代入计算函数
 
     def PRF1(self):
-        for i in range(50):
+        for i in range(10):
             sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
             # print(sentences[1])
             # print(labels[1])
@@ -158,5 +172,7 @@ class keywords_extraction(object):
 
 if __name__ == "__main__":
     keywords = keywords_extraction("train")
-    # keywords.train()
+    keywords.train()
+    keywords.PRF1()
+    keywords = keywords_extraction("test")
     keywords.PRF1()
