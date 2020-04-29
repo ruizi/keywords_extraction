@@ -43,7 +43,7 @@ def data_read_and_clean():
 
 # data_short1.json / kp20k_valid500.json / Data/kp20k_valid2k.json /kp20k_train20k.json
 def read_test():
-    with open('Data/ori_test_used/kp20k_train20k.json', 'r') as fp:
+    with open('Data/ori_test_used/kp20k_valid500.json', 'r') as fp:
         data = json.load(fp)
     return data
 

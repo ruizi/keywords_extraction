@@ -121,3 +121,6 @@ wordcloud==1.6.0
 wrapt==1.11.2
 yapf==0.28.0
 zipp==2.2.0
+
+yaml~=0.1.7
+pyyaml~=5.3.1

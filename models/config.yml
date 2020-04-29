@@ -1,7 +1,7 @@
-embedding_size: 300
-hidden_size: 256
+embedding_size: 64
+hidden_size: 128
 model_path: models/
-batch_size: 256
+batch_size: 128
 dropout: 0.5
 # hidden->200
 # embedding->300

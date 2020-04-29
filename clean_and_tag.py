@@ -267,18 +267,16 @@ def abstract_keyword2(abstract, keywords):
     corpus = []
     keywords_clean = []
 
-    # 去除关键词中存在的空格
+    # 去除关键词尾存在的空格和空项
     keywords = [' '.join(word.split()) for word in keywords if len(word) != 0 and word != " "]
     # 把每个词还原为原词 Lemmatisation
-    print("现在把关键词矩阵也词性还原：")
+    print("现在对关键词矩阵词性还原：")
     keywords_tagged_sent = pos_tag(keywords)  # 获取单词词性
     knl = WordNetLemmatizer()
     keywords_lemmatisation = []
     for key in keywords_tagged_sent:
-        # print(key)
         keylist = key[0].split(" ")
         if len(keylist) == 1:
-            # temp_str = []
             wordnet_pos_for_key = get_wordnet_pos(key[1]) or wordnet.NOUN
             print(key[0] + " : " + key[1] + " : " + wordnet_pos_for_key)
             keywords_lemmatisation.append(knl.lemmatize(key[0], pos=wordnet_pos_for_key))
@@ -291,8 +289,8 @@ def abstract_keyword2(abstract, keywords):
             keywords_lemmatisation.append(temp_str)
     keywords_clean = keywords_lemmatisation
     # corpus.append(abstract_ready)
-    print(keywords_clean)
-    print("-" * 50)
+    # print(keywords_clean)
+    # print("-" * 50)
     keyword_long_list = []  # 长度大于1的关键词拆分list [['the', 'wall', 'street', 'journal'], ['apple', 'corporation']]
     for keyword in keywords_clean:
         if keyword.__len__() > 1:
@@ -316,13 +314,13 @@ def abstract_keyword2(abstract, keywords):
         sentence_clean = re.sub(r'[{}]+'.format('.!,;:?"()\''), '', sentence)
         sentence_clean = re.sub("</?.*?>", "", sentence_clean)
         sentence_clean = re.sub("\\(.* ?\\) |\\{. *?} | \\[. *?] | > | <", "", sentence_clean)
-
+        # 关键词词性还原
         sentence_lemmatisation = abstruct_pos_process(sentence_clean)
         abstract_ready = [word for word in sentence_lemmatisation if not word in stop_words]
         short_abstracts.append(abstract_ready)
 
     for short_abstract in short_abstracts:
-        tags = []  # BIO序列
+        tags = []  # 转化为BIO序列
         print("===" * 50)
         print(short_abstract)
         print(keywords_clean)

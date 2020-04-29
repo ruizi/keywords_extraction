@@ -21,9 +21,9 @@ class DataManager():
         self.tag_map = {"B": 0, "I": 1, "O": 2, "START": 3, "STOP": 4}  # 这里改为 B I O Start Stop |OK
 
         if data_type == "train":
-            self.data_path = "Data/kp20k_train20k_sep_taged.json"  # 制定数据路径
+            self.data_path = "Data/kp20k_valid500_sep_taged.json"  # 制定数据路径
         elif data_type == "dev":
-            self.data_path = "Data/kp20k_valid2k_sep_taged.json"
+            self.data_path = "Data/kp20k_valid500_sep_taged.json"
             self.load_data_map()  # 验证/测试集就先直接进相应函数
         elif data_type == "test":
             self.data_path = "data/kp20k_valid2k_sep_taged.json"

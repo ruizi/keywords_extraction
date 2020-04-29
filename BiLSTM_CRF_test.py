@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 '''
 @Author  : cai rui
-@Date    : 2020/4/21 4:14 下午
+@Date    : 2020/4/28 2:22 下午
 '''
 
 import torch
@@ -94,7 +94,7 @@ class BiLSTM_CRF(nn.Module):
         return (torch.randn(2, self.batch_size, self.hidden_dim // 2),
                 torch.randn(2, self.batch_size, self.hidden_dim // 2))
 
-    def _get_lstm_features(self, sentences):  # 仅仅是BiLSTM的输出没有到CRF层
+    def _get_lstm_features(self, sentences, lengths):  # 仅仅是BiLSTM的输出没有到CRF层
         '''
         LSTM的数据输入是以这样的形式输入的：（序列长度，batch，输入大小），下面的是LSTM的文档中定义的使用方法
         input_size指输入数据的维度
@@ -119,8 +119,19 @@ class BiLSTM_CRF(nn.Module):
         # Dim transformation: (batch_size, seq_len, embedding_dim) -> (batch_size, seq_len, nb_lstm_units)
 
         # pack_padded_sequence so that padded items in the sequence won't be shown to the LSTM
-        lstm_out, self.hidden = self.lstm(embeddings, self.hidden)  # 把准备好的h0，c0和embedding后的输入句放入lstm运算
+        pack_embeddings = torch.nn.utils.rnn.pack_padded_sequence(embeddings, lengths, batch_first=True)
+
+        # now run through LSTM
+        lstm_out, self.hidden = self.lstm(pack_embeddings, self.hidden)  # 把准备好的h0，c0和embedding后的输入句放入lstm运算
+        # undo the packing operation
+        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
+
+        # ---------------------
+        # 3. Project to tag space
+        # Dim transformation: (batch_size, seq_len, nb_lstm_units) -> (batch_size * seq_len, nb_lstm_units)
+        # this one is a bit tricky as well. First we need to reshape the data so it goes into the linear layer
         lstm_out = lstm_out.view(self.batch_size, -1, self.hidden_dim)
+        # run through actual linear layer
         logits = self.hidden2tag(lstm_out)  # 维度降到tag_size
         return logits  # 返回每个词在lstm输出后的标签概率矩阵
 
@@ -304,7 +315,6 @@ class BiLSTM_CRF(nn.Module):
         Transition_Score = Trans(label[START], label[1]) + Trans(label[1], label[2]) + ... + Trans(label[n-1], label[STOP])
         '''
         score = torch.zeros(1)  # 初始化得分为0
-        print(label)
         label = torch.cat([torch.tensor([self.tag_map[START_TAG]], dtype=torch.long), label])  # 在label的开头加入start_tag
         for index, lstm_output in enumerate(logit):  # lstm_output是bilstm对一个句子中词的输出结果，这里是在遍历句子，也就是遍历每个时间步
             emission_score = lstm_output[label[index + 1]]
@@ -341,15 +351,15 @@ class BiLSTM_CRF(nn.Module):
         total_scores = log_sum_exp1(previous.t())[0]
         return total_scores
 
-    def neg_log_likelihood(self, sentences, tags, length):  # loss计算
+    def neg_log_likelihood(self, sentences, tags, lengths):  # loss计算
         self.batch_size = sentences.size(0)  # 通过输入的sentences的tensor的大小取得batch大小
 
-        logits = self._get_lstm_features(sentences)  # 经过LSTM+Linear后的输出作为CRF的输入
+        logits = self._get_lstm_features(sentences, lengths)  # 经过LSTM+Linear后的输出作为CRF的输入
 
         real_path_score = torch.zeros(1)
         total_score = torch.zeros(1)
 
-        for logit, tag, leng in zip(logits, tags, length):
+        for logit, tag, leng in zip(logits, tags, lengths):
             logit = logit[:leng]  # 把输出和原tag序列都截取回本身的长度，即去掉pad，为了batch输入统一了长度，使用pad补足，现在去掉
             tag = tag[:leng]
             real_path_score += self.real_path_score(logit, tag)  # 这里得到的是loss的后半部分S(X,y)的结果，是根据真实label计算得到的输出序列的分数
@@ -369,11 +379,11 @@ class BiLSTM_CRF(nn.Module):
            :params sentences sentences to predict
            :params lengths represent the ture length of sentence, the default is sentences.size(-1)
         """
-        sentences = torch.tensor(sentences, dtype=torch.long)
-        if not lengths:
-            lengths = [i.size(-1) for i in sentences]
+        # sentences = torch.tensor(sentences, dtype=torch.long)
+        # if not lengths:
+        #     lengths = [i.size(-1) for i in sentences]
         self.batch_size = sentences.size(0)  # 取得batch大小
-        logits = self._get_lstm_features(sentences)  # 代入lstm得到lstm层的输出
+        logits = self._get_lstm_features(sentences, lengths)  # 代入lstm得到lstm层的输出
         scores = []
         paths = []
         for logit, leng in zip(logits, lengths):
