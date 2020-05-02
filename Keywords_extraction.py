@@ -109,7 +109,7 @@ class keywords_extraction(object):
 
     def restore_model(self):
         try:
-            self.model.load_state_dict(torch.load(self.model_path + "train20k_sep_taged_batch256.pkl"))
+            self.model.load_state_dict(torch.load(self.model_path + "train500_sep_taged_batch128.pkl"))
             print("model restore success!")
         except Exception as error:
             print("model restore faild! {}".format(error))
@@ -149,7 +149,7 @@ class keywords_extraction(object):
                 optimizer.step()
                 # 存储当前网络参数
             print("=======================================epoch_loss:", epoch_loss)
-            torch.save(self.model.state_dict(), self.model_path + 'train20k_sep_taged_batch256.pkl')
+            torch.save(self.model.state_dict(), self.model_path + 'train500_sep_taged_batch128.pkl')
 
     def evaluate(self):
         sentences, labels, length = zip(*self.dev_batch.__next__())  # 取得一个batch的训练数据
